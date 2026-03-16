@@ -1,0 +1,744 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
+<meta name="theme-color" content="#2d5a3d"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Clarity"/>
+<title>Clarity — Dr. Clarity</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+
+/* ANDROID FIX: use dvh (dynamic viewport height) with vh fallback */
+html{height:100%;height:-webkit-fill-available;}
+body{
+  font-family:'DM Sans',sans-serif;
+  background:#f5f0e8;
+  color:#1c2b20;
+  height:100vh;
+  height:100dvh;
+  overflow:hidden;
+  -webkit-text-size-adjust:100%;
+}
+
+.lora{font-family:'Lora',serif;}
+textarea,input,select{font-family:'DM Sans',sans-serif;color:#1c2b20;font-size:16px;} /* 16px prevents iOS/Android zoom on focus */
+textarea:focus,input:focus,select:focus{outline:none;}
+
+/* APP SHELL — fills entire screen */
+#app{
+  height:100vh;
+  height:100dvh;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden;
+  position:relative;
+}
+
+/* SCREENS */
+.screen{display:none;flex:1;flex-direction:column;overflow:hidden;min-height:0;}
+.screen.active{display:flex;}
+
+/* TOPBAR */
+.topbar{
+  background:#fff;
+  border-bottom:1px solid #d0ddd3;
+  padding:12px 16px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-shrink:0;
+  min-height:52px;
+}
+.topbar-title{font-size:17px;font-weight:500;color:#2d5a3d;font-family:'Lora',serif;}
+.topbar-back{background:none;border:none;color:#6b7f72;cursor:pointer;font-size:15px;font-family:'DM Sans',sans-serif;padding:8px 0;display:flex;align-items:center;gap:4px;min-width:44px;min-height:44px;}
+
+/* BOTTOM NAV */
+.bottomnav{
+  background:#fff;
+  border-top:1px solid #d0ddd3;
+  display:flex;
+  flex-shrink:0;
+  /* ANDROID FIX: account for gesture nav bar */
+  padding-bottom:max(env(safe-area-inset-bottom, 0px), 8px);
+}
+.bnav-btn{
+  flex:1;border:none;background:none;
+  padding:10px 4px 6px;
+  cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  font-family:'DM Sans',sans-serif;font-size:10px;color:#6b7f72;
+  position:relative;
+  min-height:52px;
+}
+.bnav-btn.active{color:#2d5a3d;}
+
+/* SCROLLABLE CONTENT */
+.content{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:1rem 1rem 1.5rem;
+  overscroll-behavior:contain;
+}
+
+/* CARDS */
+.card{background:#fff;border:1.5px solid #d0ddd3;border-radius:16px;overflow:hidden;}
+
+/* BUTTONS */
+.btn-green{background:#2d5a3d;color:#fff;border:none;border-radius:14px;padding:16px 20px;font-size:16px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%;min-height:52px;}
+.btn-green.off{background:#aaa;cursor:not-allowed;}
+
+/* CHAT BUBBLES */
+.bubble{max-width:85%;border-radius:16px;padding:12px 16px;font-size:15px;line-height:1.7;white-space:pre-wrap;word-break:break-word;}
+.bubble-ai{background:#e8f0ea;border-radius:16px 16px 16px 4px;color:#1c2b20;}
+.bubble-user{background:#2d5a3d;border-radius:16px 16px 4px 16px;color:#fff;}
+
+/* TYPING INDICATOR */
+.dot-pulse{display:inline-flex;gap:4px;align-items:center;}
+.dot-pulse span{width:7px;height:7px;border-radius:50%;background:#4a7c59;animation:dp 1.2s ease-in-out infinite;}
+.dot-pulse span:nth-child(2){animation-delay:.2s;}
+.dot-pulse span:nth-child(3){animation-delay:.4s;}
+@keyframes dp{0%,80%,100%{transform:scale(0.6);opacity:.4;}40%{transform:scale(1);opacity:1;}}
+
+/* MIC BUTTON */
+.mic-btn{width:48px;height:48px;border-radius:50%;border:2px solid #2d5a3d;background:transparent;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all 0.2s;}
+.mic-btn.listening{background:#c0392b;border-color:#c0392b;animation:pulse-ring 1s ease-in-out infinite;}
+@keyframes pulse-ring{0%{box-shadow:0 0 0 0 rgba(192,57,43,0.4);}70%{box-shadow:0 0 0 10px rgba(192,57,43,0);}100%{box-shadow:0 0 0 0 rgba(192,57,43,0);}}
+
+/* VOICE WAVE */
+.voice-wave{display:flex;align-items:center;gap:3px;height:20px;}
+.voice-wave span{width:3px;border-radius:3px;background:#fff;animation:wave 0.8s ease-in-out infinite;}
+.voice-wave span:nth-child(1){height:8px;}
+.voice-wave span:nth-child(2){height:16px;animation-delay:0.1s;}
+.voice-wave span:nth-child(3){height:12px;animation-delay:0.2s;}
+.voice-wave span:nth-child(4){height:18px;animation-delay:0.3s;}
+.voice-wave span:nth-child(5){height:10px;animation-delay:0.4s;}
+@keyframes wave{0%,100%{transform:scaleY(0.5);}50%{transform:scaleY(1.2);}}
+
+/* MIC STATUS BAR */
+.mic-status{background:#c0392b;color:#fff;text-align:center;font-size:14px;padding:10px;flex-shrink:0;display:none;align-items:center;justify-content:center;gap:8px;}
+.mic-status.active{display:flex;}
+
+/* CHAT INPUT AREA — ANDROID FIXED */
+.chat-input-area{
+  padding:10px 12px;
+  border-top:1px solid #d0ddd3;
+  background:#fff;
+  display:flex;
+  gap:8px;
+  align-items:flex-end;
+  flex-shrink:0;
+  /* ANDROID FIX: safe area for gesture nav */
+  padding-bottom:max(10px, env(safe-area-inset-bottom, 10px));
+}
+
+/* CHAT MESSAGES AREA */
+#chatmsgs{
+  flex:1;
+  overflow-y:auto;
+  -webkit-overflow-scrolling:touch;
+  padding:1rem;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  overscroll-behavior:contain;
+  /* ANDROID FIX: prevent content going under nav */
+  min-height:0;
+}
+
+/* SPEAK TOGGLE */
+.speak-toggle{display:flex;align-items:center;gap:6px;padding:8px 12px;border-radius:20px;border:1.5px solid #d0ddd3;background:#fff;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:#6b7f72;transition:all 0.2s;min-height:40px;}
+.speak-toggle.on{border-color:#2d5a3d;background:#e8f0ea;color:#2d5a3d;}
+
+/* MISC */
+.badge{min-width:18px;height:18px;border-radius:9px;background:#c0392b;color:#fff;font-size:10px;font-weight:500;display:inline-flex;align-items:center;justify-content:center;padding:0 4px;}
+.hw-item{background:#fff;border:1.5px solid #d0ddd3;border-radius:14px;padding:1rem 1.25rem;display:flex;gap:12px;align-items:flex-start;margin-bottom:10px;}
+.transcript-item{background:#fff;border:1.5px solid #d0ddd3;border-radius:14px;padding:1rem 1.25rem;margin-bottom:10px;cursor:pointer;}
+.icon-btn{background:none;border:1.5px solid #d0ddd3;border-radius:10px;padding:8px 12px;cursor:pointer;font-family:'DM Sans',sans-serif;font-size:13px;color:#6b7f72;display:flex;align-items:center;gap:6px;min-height:40px;}
+select{border:1px solid #d0ddd3;border-radius:8px;padding:8px 10px;background:#fff;width:100%;font-size:16px;}
+input[type=range]{width:100%;accent-color:#2d5a3d;height:24px;}
+.setup-card{background:#fff;border-radius:20px;padding:1.5rem;width:100%;max-width:420px;box-shadow:0 4px 24px rgba(0,0,0,0.08);}
+.api-input{width:100%;border:1.5px solid #d0ddd3;border-radius:12px;padding:14px 16px;font-size:16px;background:#f5f0e8;font-family:'DM Sans',sans-serif;color:#1c2b20;}
+.api-input:focus{border-color:#2d5a3d;}
+.tts-mode-btn{width:100%;border-radius:12px;padding:14px 16px;cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;border:1.5px solid #d0ddd3;background:#fff;margin-bottom:8px;min-height:52px;}
+.tts-mode-btn.selected{border-color:#2d5a3d;background:#eef8f0;}
+.eleven-badge{display:inline-flex;align-items:center;background:#2d5a3d;color:#fff;font-size:11px;font-weight:500;padding:3px 8px;border-radius:10px;}
+.browser-badge{display:inline-flex;align-items:center;background:#d0ddd3;color:#3a5a44;font-size:11px;font-weight:500;padding:3px 8px;border-radius:10px;}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:1000;display:flex;align-items:flex-end;justify-content:center;padding:0;}
+.modal-box{background:#fff;border-radius:20px 20px 0 0;padding:1.5rem;width:100%;max-width:500px;}
+
+/* ANDROID: textarea auto-resize */
+textarea{resize:none;-webkit-appearance:none;appearance:none;}
+
+/* LARGER TAP TARGETS for mobile */
+@media (max-width: 600px){
+  .bnav-btn{font-size:9px;padding:8px 2px 4px;}
+  .bubble{font-size:15px;}
+  .topbar-title{font-size:16px;}
+}
+
+@media print{
+  body{overflow:auto;}
+  #app{display:none;}
+  #print-area{display:block !important;}
+}
+#print-area{display:none;}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- MODAL -->
+<div id="modal" class="modal-overlay" style="display:none;" onclick="modalCancel()">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <p id="modal-msg" style="font-size:16px;line-height:1.6;margin-bottom:1.25rem;color:#1c2b20;"></p>
+    <div style="display:flex;gap:10px;">
+      <button id="modal-ok" onclick="modalConfirm()" style="flex:1;background:#c0392b;color:#fff;border:none;border-radius:12px;padding:14px;font-size:16px;cursor:pointer;font-family:'DM Sans',sans-serif;min-height:52px;">Delete</button>
+      <button onclick="modalCancel()" style="flex:1;background:#f5f0e8;color:#1c2b20;border:1px solid #d0ddd3;border-radius:12px;padding:14px;font-size:16px;cursor:pointer;font-family:'DM Sans',sans-serif;min-height:52px;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ SETUP ═══ -->
+<div id="setup" class="screen active">
+  <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1.25rem;overflow-y:auto;">
+    <div class="setup-card">
+      <div style="text-align:center;margin-bottom:1.5rem;">
+        <div style="width:64px;height:64px;border-radius:50%;background:#2d5a3d;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;">
+          <svg width="30" height="30" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="5" fill="white"/><circle cx="14" cy="14" r="10" stroke="white" stroke-width="1.5" stroke-dasharray="3 2"/></svg>
+        </div>
+        <h1 class="lora" style="font-size:28px;font-weight:500;color:#2d5a3d;margin-bottom:6px;">Welcome to Clarity</h1>
+        <p style="color:#6b7f72;font-size:14px;line-height:1.6;">One-time setup to connect Dr. Clarity</p>
+      </div>
+      <div style="background:#fdf6ee;border:1px solid #e8c99a;border-radius:12px;padding:1rem;margin-bottom:1rem;font-size:13px;color:#7a4a1a;line-height:1.7;">
+        <strong>Note:</strong> Clarity is an AI support tool grounded in evidence-based psychology. It is not a replacement for licensed therapy.
+      </div>
+      <div style="margin-bottom:1.25rem;">
+        <label style="font-size:12px;font-weight:500;color:#6b7f72;letter-spacing:1px;display:block;margin-bottom:8px;">ANTHROPIC API KEY</label>
+        <input type="password" id="api-key-input" class="api-input" placeholder="sk-ant-api03-..." oninput="checkKey()" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+        <div id="key-hint" style="font-size:12px;color:#6b7f72;margin-top:6px;">Saved only on this device.</div>
+      </div>
+      <button id="save-key-btn" class="btn-green off" onclick="saveKey()" style="margin-bottom:1.25rem;">Connect Dr. Clarity →</button>
+      <div style="border-top:1px solid #e8e0d8;padding-top:1.25rem;">
+        <div style="font-size:13px;font-weight:500;color:#1c2b20;margin-bottom:8px;">How to get your free API key:</div>
+        <div style="font-size:13px;color:#6b7f72;line-height:2.1;">
+          1. Go to <strong style="color:#2d5a3d;">console.anthropic.com</strong><br>
+          2. Sign in → click <strong>API Keys</strong><br>
+          3. Click <strong>+ Create Key</strong><br>
+          4. Copy and paste it above<br>
+          5. Add ~$5 credit in Billing
+        </div>
+        <a href="https://console.anthropic.com/settings/keys" target="_blank" style="display:block;margin-top:12px;text-align:center;background:#f5f0e8;border:1px solid #d0ddd3;border-radius:10px;padding:12px;font-size:14px;color:#2d5a3d;text-decoration:none;">Open console.anthropic.com →</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ HOME ═══ -->
+<div id="home" class="screen">
+  <div class="content" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100%;">
+    <div style="text-align:center;margin-bottom:1.75rem;">
+      <div style="width:72px;height:72px;border-radius:50%;background:#2d5a3d;margin:0 auto 1rem;display:flex;align-items:center;justify-content:center;">
+        <svg width="32" height="32" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="5" fill="white"/><circle cx="14" cy="14" r="10" stroke="white" stroke-width="1.5" stroke-dasharray="3 2"/></svg>
+      </div>
+      <h1 class="lora" style="font-size:34px;font-weight:500;color:#2d5a3d;margin-bottom:6px;">Clarity</h1>
+      <p style="color:#6b7f72;font-size:15px;max-width:260px;margin:0 auto;line-height:1.6;">Your personal counselor for growth &amp; deeper connection.</p>
+    </div>
+    <div style="width:100%;max-width:400px;display:flex;flex-direction:column;gap:10px;">
+      <button onclick="G('session')" style="background:#2d5a3d;color:#fff;border:none;border-radius:16px;padding:20px;cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;width:100%;min-height:80px;">
+        <div style="font-size:11px;opacity:0.6;letter-spacing:1.2px;margin-bottom:6px;">NEW SESSION</div>
+        <div style="font-size:18px;font-weight:500;margin-bottom:3px;">Describe a situation</div>
+        <div style="font-size:13px;opacity:0.7;">Get perspective, honest feedback &amp; guidance</div>
+      </button>
+      <button onclick="G('chat')" style="background:#fff;color:#1c2b20;border:1.5px solid #d0ddd3;border-radius:16px;padding:20px;cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;width:100%;min-height:80px;">
+        <div style="font-size:11px;color:#6b7f72;letter-spacing:1.2px;margin-bottom:6px;">FREE CONVERSATION</div>
+        <div style="font-size:18px;font-weight:500;">Talk to Dr. Clarity</div>
+        <div style="font-size:13px;color:#6b7f72;margin-top:3px;">Speak or type — ask anything</div>
+      </button>
+      <button onclick="G('homework')" style="background:#fff;color:#1c2b20;border:1.5px solid #d0ddd3;border-radius:16px;padding:20px;cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;width:100%;position:relative;min-height:72px;">
+        <div style="font-size:11px;color:#6b7f72;letter-spacing:1.2px;margin-bottom:6px;">TRACK PROGRESS</div>
+        <div style="font-size:18px;font-weight:500;">Homework &amp; assignments</div>
+        <span id="hbadge" style="display:none;position:absolute;top:16px;right:16px;" class="badge"></span>
+      </button>
+      <button onclick="G('transcripts')" style="background:#fff;color:#1c2b20;border:1.5px solid #d0ddd3;border-radius:16px;padding:20px;cursor:pointer;text-align:left;font-family:'DM Sans',sans-serif;width:100%;position:relative;min-height:72px;">
+        <div style="font-size:11px;color:#6b7f72;letter-spacing:1.2px;margin-bottom:6px;">SAVED SESSIONS</div>
+        <div style="font-size:18px;font-weight:500;">Transcripts</div>
+        <span id="tbadge" style="display:none;position:absolute;top:16px;right:16px;" class="badge"></span>
+      </button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;margin-top:1.25rem;flex-wrap:wrap;justify-content:center;">
+      <button id="home-speak-toggle" class="speak-toggle" onclick="toggleSpeak()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        <span id="speak-label">Voice off</span>
+      </button>
+      <button onclick="G('settings')" style="background:none;border:1.5px solid #d0ddd3;border-radius:20px;padding:8px 14px;cursor:pointer;font-size:13px;color:#6b7f72;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:6px;min-height:40px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+        Settings
+      </button>
+    </div>
+  </div>
+  <div class="bottomnav">
+    <button class="bnav-btn active" onclick="G('home')"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M3 10L10 3L17 10V17H13V13H7V17H3V10Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/></svg>Home</button>
+    <button class="bnav-btn" onclick="G('session')"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><circle cx="10" cy="10" r="7" stroke="currentColor" stroke-width="1.5"/><path d="M10 7V10L12 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Session</button>
+    <button class="bnav-btn" onclick="G('chat')"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M4 4H16C16.6 4 17 4.4 17 5V13C17 13.6 16.6 14 16 14H7L3 17V5C3 4.4 3.4 4 4 4Z" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round" fill="none"/></svg>Chat</button>
+    <button class="bnav-btn" onclick="G('homework')" style="position:relative;"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><rect x="4" y="3" width="12" height="14" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M7 8H13M7 11H11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><span id="nbadge" style="display:none;position:absolute;top:4px;right:8px;" class="badge"></span>Homework</button>
+    <button class="bnav-btn" onclick="G('transcripts')"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M4 4h8l4 4v9a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1z" stroke="currentColor" stroke-width="1.5" fill="none"/><path d="M12 4v4h4M6 9h8M6 12h5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>Saved</button>
+  </div>
+</div>
+
+<!-- ═══ SESSION ═══ -->
+<div id="session" class="screen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="G('home')"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Back</button>
+    <span class="topbar-title">New Session</span>
+    <div style="width:60px;"></div>
+  </div>
+  <div class="content">
+    <p style="color:#6b7f72;font-size:14px;margin-bottom:1rem;line-height:1.6;">Describe what happened — type it out, or tap the mic to speak.</p>
+    <div class="card" style="margin-bottom:1rem;">
+      <textarea id="sit" placeholder="Example: Maura and I argued about dinner plans. I felt she was overreacting but she went quiet and we didn't speak for the rest of the evening..." style="width:100%;min-height:150px;padding:1.25rem;border:none;line-height:1.7;background:transparent;font-size:16px;" oninput="onType()"></textarea>
+      <div style="padding:10px 16px;border-top:1px solid #d0ddd3;display:flex;justify-content:space-between;align-items:center;">
+        <span id="ccount" style="font-size:13px;color:#6b7f72;">0 characters</span>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span id="chint" style="font-size:13px;color:#6b7f72;">Type or speak</span>
+          <button id="sess-mic" class="mic-btn" onclick="toggleSessMic()">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+    <div id="sess-mic-status" class="mic-status" style="border-radius:12px;margin-bottom:1rem;">
+      <div class="voice-wave"><span></span><span></span><span></span><span></span><span></span></div>
+      Listening... tap mic to stop
+    </div>
+    <div style="background:#e8f0ea;border-radius:12px;padding:1rem;margin-bottom:1rem;">
+      <div style="font-size:11px;font-weight:500;color:#4a7c59;letter-spacing:1px;margin-bottom:6px;">HELPFUL PROMPTS</div>
+      <div style="font-size:14px;color:#5a7260;line-height:2.2;">· What triggered the disagreement?<br>· How did each of you react?<br>· What was left unresolved?<br>· How are you feeling about it now?</div>
+    </div>
+    <button id="abtn" class="btn-green off" onclick="doAnalyze()">Analyze this situation →</button>
+    <div id="amsg" style="display:none;text-align:center;padding:1.5rem;color:#4a7c59;font-size:15px;">
+      <div class="dot-pulse" style="justify-content:center;margin-bottom:10px;"><span></span><span></span><span></span></div>
+      Dr. Clarity is analyzing...
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CHAT ═══ -->
+<div id="chat" class="screen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="G('home')"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Back</button>
+    <span class="topbar-title">Dr. Clarity</span>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <button id="chat-speak-toggle" class="speak-toggle" onclick="toggleSpeak()" style="padding:6px 10px;font-size:12px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+        <span id="chat-speak-label">Off</span>
+      </button>
+      <button onclick="saveTranscript()" id="save-btn" style="background:#e8f0ea;color:#2d5a3d;border:1px solid #a8d8b0;border-radius:20px;padding:6px 12px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;display:flex;align-items:center;gap:5px;min-height:36px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+        Save
+      </button>
+      <button onclick="stopSpeaking()" id="stop-btn" style="display:none;background:#c0392b;color:#fff;border:none;border-radius:20px;padding:6px 10px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;min-height:36px;">Stop ■</button>
+    </div>
+  </div>
+
+  <div id="chatmsgs">
+    <div style="display:flex;align-items:flex-start;gap:8px;">
+      <div style="width:32px;height:32px;border-radius:50%;background:#2d5a3d;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="5" fill="white"/><circle cx="14" cy="14" r="10" stroke="white" stroke-width="1.5" stroke-dasharray="3 2"/></svg></div>
+      <div class="bubble bubble-ai">Hi Keith. I'm Dr. Clarity — your AI counseling assistant grounded in evidence-based psychology.<br><br>Type your message below or tap the <strong>mic button</strong> to speak. Tap <strong>Voice off</strong> at the top to have me speak back to you.<br><br>What's on your mind today?</div>
+    </div>
+  </div>
+
+  <div id="chat-mic-status" class="mic-status">
+    <div class="voice-wave"><span></span><span></span><span></span><span></span><span></span></div>
+    Listening... tap mic again to send
+  </div>
+
+  <!-- ANDROID-FIXED INPUT BAR -->
+  <div class="chat-input-area">
+    <textarea id="cinput"
+      placeholder="Type your message here..."
+      rows="2"
+      style="flex:1;border:1.5px solid #d0ddd3;border-radius:14px;padding:12px 14px;font-size:16px;background:#f5f0e8;resize:none;line-height:1.5;max-height:120px;"
+      oninput="aR(this)"
+      onkeydown="ck(event)">
+    </textarea>
+    <button id="chat-mic" class="mic-btn" onclick="toggleChatMic()">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+    </button>
+    <button id="send-btn" onclick="doChat()" style="background:#2d5a3d;color:#fff;border:none;border-radius:14px;width:52px;height:52px;cursor:pointer;font-size:22px;flex-shrink:0;display:flex;align-items:center;justify-content:center;">→</button>
+  </div>
+</div>
+
+<!-- ═══ HOMEWORK ═══ -->
+<div id="homework" class="screen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="G('home')"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Back</button>
+    <span class="topbar-title">Homework</span>
+    <div style="width:60px;"></div>
+  </div>
+  <div class="content">
+    <p id="hwsub" style="color:#6b7f72;font-size:14px;margin-bottom:1.25rem;"></p>
+    <div id="hwlist"></div>
+    <div class="card" style="margin-top:1rem;">
+      <div style="padding:1rem;border-bottom:1px solid #d0ddd3;"><div style="font-size:14px;font-weight:500;color:#2d5a3d;">Add Assignment</div></div>
+      <div style="padding:10px 12px;display:flex;gap:8px;">
+        <input id="hwinput" placeholder="Add your own assignment..." style="flex:1;border:1px solid #d0ddd3;border-radius:10px;padding:12px 14px;background:#f5f0e8;font-size:16px;" onkeydown="if(event.key==='Enter')addM()"/>
+        <button onclick="addM()" style="background:#2d5a3d;color:#fff;border:none;border-radius:10px;width:52px;height:52px;cursor:pointer;font-size:24px;flex-shrink:0;">+</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TRANSCRIPTS ═══ -->
+<div id="transcripts" class="screen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="G('home')"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Back</button>
+    <span class="topbar-title">Saved Transcripts</span>
+    <div style="width:60px;"></div>
+  </div>
+  <div class="content">
+    <p id="tsub" style="color:#6b7f72;font-size:14px;margin-bottom:1.25rem;"></p>
+    <div id="tlist"></div>
+  </div>
+</div>
+
+<!-- ═══ TRANSCRIPT VIEWER ═══ -->
+<div id="tviewer" class="screen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="G('transcripts')"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Back</button>
+    <span class="topbar-title" id="tviewer-title" style="font-size:13px;">Session</span>
+    <div style="display:flex;gap:6px;">
+      <button onclick="downloadTranscript()" class="icon-btn" style="padding:6px 10px;font-size:12px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        .txt
+      </button>
+      <button onclick="printTranscript()" class="icon-btn" style="padding:6px 10px;font-size:12px;">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+        Print
+      </button>
+    </div>
+  </div>
+  <div class="content" id="tviewer-content"></div>
+</div>
+
+<!-- ═══ SETTINGS ═══ -->
+<div id="settings" class="screen">
+  <div class="topbar">
+    <button class="topbar-back" onclick="G('home')"><svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg> Back</button>
+    <span class="topbar-title">Settings</span>
+    <div style="width:60px;"></div>
+  </div>
+  <div class="content">
+    <div class="card" style="margin-bottom:1rem;">
+      <div style="padding:1rem 1.25rem;display:flex;justify-content:space-between;align-items:center;">
+        <div><div style="font-size:15px;font-weight:500;margin-bottom:2px;">Voice Responses</div><div style="font-size:13px;color:#6b7f72;">Dr. Clarity speaks responses aloud</div></div>
+        <button id="settings-speak-toggle" onclick="toggleSpeak()" style="width:52px;height:30px;border-radius:15px;border:none;cursor:pointer;transition:background 0.2s;position:relative;background:#aaa;flex-shrink:0;">
+          <div id="toggle-knob" style="width:24px;height:24px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:left 0.2s;"></div>
+        </button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div style="padding:1rem 1.25rem;border-bottom:1px solid #d0ddd3;"><div style="font-size:15px;font-weight:500;margin-bottom:4px;">Voice Engine</div><div style="font-size:13px;color:#6b7f72;">ElevenLabs sounds human. Browser voice is free but robotic.</div></div>
+      <div style="padding:1rem 1.25rem;">
+        <button id="btn-eleven" class="tts-mode-btn" onclick="setTTSMode('elevenlabs')">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:15px;font-weight:500;">ElevenLabs</span><span class="eleven-badge">Recommended</span></div>
+          <div style="font-size:13px;color:#6b7f72;">Human-quality voice. Free: 10,000 chars/month.</div>
+        </button>
+        <button id="btn-browser" class="tts-mode-btn" onclick="setTTSMode('browser')">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;"><span style="font-size:15px;font-weight:500;">Browser Voice</span><span class="browser-badge">Free · Built-in</span></div>
+          <div style="font-size:13px;color:#6b7f72;">No setup needed. Works without extra keys.</div>
+        </button>
+        <div id="eleven-options" style="display:none;padding-top:12px;border-top:1px solid #e8e8e8;">
+          <div style="font-size:12px;color:#6b7f72;margin-bottom:6px;">ELEVENLABS API KEY</div>
+          <input type="password" id="eleven-key-input" class="api-input" placeholder="Paste your ElevenLabs API key..." style="margin-bottom:10px;" autocomplete="off"/>
+          <div style="font-size:12px;color:#6b7f72;margin-bottom:6px;">VOICE</div>
+          <select id="eleven-voice-select" style="margin-bottom:12px;">
+            <option value="21m00Tcm4TlvDq8ikWAM">Rachel — warm, calm, American female</option>
+            <option value="AZnzlk1XvdvUeBnXmlld">Domi — confident, American female</option>
+            <option value="EXAVITQu4vr4xnSDxMaL">Bella — soft, American female</option>
+            <option value="ErXwobaYiN019PkySvjV">Antoni — warm, American male</option>
+            <option value="VR6AewLTigWG4xSOukaG">Arnold — crisp, American male</option>
+            <option value="pNInz6obpgDQGcFmaJgB">Adam — deep, American male</option>
+            <option value="yoZ06aMxZJJ28mfd3POQ">Sam — friendly, American male</option>
+          </select>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button onclick="saveElevenKey()" class="btn-green" style="flex:1;padding:12px;">Save Key</button>
+            <button onclick="testElevenVoice()" style="flex:1;background:#e8f0ea;color:#2d5a3d;border:1px solid #a8d8b0;border-radius:14px;padding:12px;font-size:15px;cursor:pointer;font-family:'DM Sans',sans-serif;">Test Voice</button>
+          </div>
+          <div id="eleven-msg" style="font-size:13px;margin-top:4px;display:none;padding:8px;border-radius:8px;text-align:center;"></div>
+          <div style="margin-top:8px;background:#fdf6ee;border:1px solid #e8c99a;border-radius:10px;padding:10px;font-size:13px;color:#7a4a1a;line-height:1.6;">Get a free key at <strong>elevenlabs.io</strong> → Sign up → Profile → API Key</div>
+        </div>
+        <div id="browser-options" style="display:none;padding-top:12px;border-top:1px solid #e8e8e8;">
+          <div style="font-size:12px;color:#6b7f72;margin-bottom:6px;">VOICE</div>
+          <select id="voice-select" style="margin-bottom:12px;"><option>Loading voices...</option></select>
+          <div style="font-size:12px;color:#6b7f72;margin-bottom:6px;">SPEED</div>
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+            <span style="font-size:12px;color:#6b7f72;">Slow</span>
+            <input type="range" id="rate-slider" min="0.6" max="1.4" step="0.1" value="0.9" oninput="document.getElementById('rate-val').textContent=parseFloat(this.value).toFixed(1)+'x';" style="flex:1;"/>
+            <span id="rate-val" style="font-size:12px;min-width:36px;">0.9x</span>
+            <span style="font-size:12px;color:#6b7f72;">Fast</span>
+          </div>
+          <button onclick="testBrowserVoice()" style="width:100%;background:#e8f0ea;color:#2d5a3d;border:1px solid #a8d8b0;border-radius:10px;padding:12px;font-size:15px;cursor:pointer;font-family:'DM Sans',sans-serif;">Test Voice</button>
+        </div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div style="padding:1rem 1.25rem;border-bottom:1px solid #d0ddd3;"><div style="font-size:15px;font-weight:500;margin-bottom:2px;">Anthropic API Key</div><div style="font-size:13px;color:#6b7f72;">Your AI connection key</div></div>
+      <div style="padding:1rem 1.25rem;display:flex;flex-direction:column;gap:10px;">
+        <input type="password" id="settings-key-input" class="api-input" placeholder="sk-ant-api03-..." autocomplete="off" autocorrect="off" autocapitalize="off"/>
+        <button onclick="updateKey()" class="btn-green">Update Key</button>
+        <div id="key-update-msg" style="font-size:13px;color:#4a7c59;display:none;text-align:center;padding:6px;">✓ Key saved!</div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:1rem;">
+      <div style="padding:1rem 1.25rem;border-bottom:1px solid #d0ddd3;"><div style="font-size:15px;font-weight:500;margin-bottom:2px;">Connection Test</div><div style="font-size:13px;color:#6b7f72;">Verify your API key is working</div></div>
+      <div style="padding:1rem 1.25rem;">
+        <button onclick="testConnection()" style="background:#e8f0ea;color:#2d5a3d;border:1px solid #a8d8b0;border-radius:10px;padding:12px;font-size:15px;cursor:pointer;font-family:'DM Sans',sans-serif;width:100%;">Test Connection</button>
+        <div id="conn-result" style="font-size:13px;margin-top:10px;line-height:1.6;display:none;padding:10px;border-radius:8px;"></div>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:2rem;">
+      <div style="padding:1rem 1.25rem;">
+        <div style="font-size:15px;font-weight:500;margin-bottom:8px;">About Dr. Clarity</div>
+        <div style="font-size:13px;color:#6b7f72;line-height:1.9;">
+          Evidence-based frameworks used:<br>
+          · Gottman Method (Drs. John &amp; Julie Gottman)<br>
+          · Emotionally Focused Therapy — Dr. Sue Johnson<br>
+          · Attachment Theory — Bowlby &amp; Ainsworth<br>
+          · CBT — Aaron Beck<br>
+          · Nonviolent Communication — Marshall Rosenberg<br>
+          · DBT Skills — Marsha Linehan<br>
+          · Window of Tolerance — Dr. Dan Siegel<br><br>
+          <strong>Not a licensed therapist.</strong> For serious concerns please seek professional care.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /app -->
+<div id="print-area"></div>
+
+<script>
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+const SYS=`You are Dr. Clarity — an AI counseling assistant working with Keith, whose wife is Maura. You are NOT a licensed therapist and must make that clear if asked.
+
+MISSION: Help Keith grow as a partner using guidance grounded exclusively in established, evidence-based psychology.
+
+FRAMEWORKS (cite by name when relevant):
+1. Gottman Method: Four Horsemen (criticism, contempt, defensiveness, stonewalling). Contempt is the strongest predictor of relationship dissolution per Gottman's research.
+2. EFT / Emotionally Focused Therapy (Dr. Sue Johnson): Negative cycles driven by unmet attachment needs. Pursue/withdraw patterns.
+3. Attachment Theory (Bowlby & Ainsworth): Secure, anxious, avoidant, fearful-avoidant styles shaped by early caregiving.
+4. CBT (Aaron Beck): Cognitive distortions — all-or-nothing thinking, mind-reading, catastrophizing, personalization.
+5. NVC / Nonviolent Communication (Marshall Rosenberg): Observations vs evaluations. Feelings vs thoughts. Needs vs strategies. Doable requests.
+6. DBT (Marsha Linehan): TIPP for de-escalation. Opposite action. Check the facts.
+7. Window of Tolerance (Dr. Dan Siegel): When flooded, productive conversation is neurologically impossible. 20-minute cool-down needed.
+8. Family Systems Theory (Murray Bowen): Patterns from families of origin repeat until consciously interrupted.
+
+STRICT RULES:
+- NEVER invent statistics or fabricate study citations.
+- NEVER diagnose Keith or Maura.
+- NEVER claim certainty about Maura's inner state — frame as informed inference: "Maura may be feeling..."
+- NEVER give medical advice.
+- Always recommend professional help for serious concerns.
+- If you don't know something, say so.
+
+APPROACH:
+- Validate Keith's feelings first.
+- Name Gottman's Four Horsemen directly when present.
+- Craft apologies using NVC: acknowledge impact, name unmet need, make concrete request.
+- Assign behavioral, specific, achievable weekly homework.
+- Keep chat responses warm and under 250 words unless complexity requires more.
+
+FOR FULL ANALYSIS use bold labeled sections:
+**KEY INSIGHT** | **YOUR PERSPECTIVE (Keith)** | **MAURA'S PERSPECTIVE** | **HONEST FEEDBACK** | **BACKGROUND & PATTERNS** | **WHAT TO SAY TO MAURA** | **HOMEWORK**
+
+End significant advice with a reminder that Dr. Clarity is an AI tool, not a licensed couples therapist.`;
+
+let cH=[],hw=[],dHW=new Set(),sit='',tc=0;
+let speakOn=false,ttsMode='browser',voices=[];
+let recognition=null,recogActive=false,recogTarget=null;
+let currentAudio=null,savedTranscripts=[],currentViewingTranscript=null;
+let busy=false,analyzing=false,pendingDeleteCb=null;
+
+// MODAL
+function showModal(msg,cb){document.getElementById('modal-msg').textContent=msg;pendingDeleteCb=cb;document.getElementById('modal').style.display='flex';}
+function modalConfirm(){document.getElementById('modal').style.display='none';if(pendingDeleteCb){pendingDeleteCb();pendingDeleteCb=null;}}
+function modalCancel(){document.getElementById('modal').style.display='none';pendingDeleteCb=null;}
+
+// KEYS
+function getKey(){return localStorage.getItem('clarity_api_key')||'';}
+function getElevenKey(){return localStorage.getItem('clarity_eleven_key')||'';}
+function checkKey(){
+  const v=document.getElementById('api-key-input').value.trim();
+  const btn=document.getElementById('save-key-btn'),hint=document.getElementById('key-hint');
+  if(v.length>10){btn.classList.remove('off');btn.style.cursor='pointer';hint.textContent='Looks good!';hint.style.color='#4a7c59';}
+  else{btn.classList.add('off');btn.style.cursor='not-allowed';hint.textContent='Saved only on this device.';hint.style.color='#6b7f72';}
+}
+function saveKey(){const v=document.getElementById('api-key-input').value.trim();if(v.length<10)return;localStorage.setItem('clarity_api_key',v);G('home');}
+function updateKey(){const v=document.getElementById('settings-key-input').value.trim();if(!v)return;localStorage.setItem('clarity_api_key',v);const m=document.getElementById('key-update-msg');m.style.display='block';setTimeout(()=>m.style.display='none',2500);}
+function saveElevenKey(){const v=document.getElementById('eleven-key-input').value.trim();if(!v)return;localStorage.setItem('clarity_eleven_key',v);showElevenMsg('✓ Key saved!','#e8f0ea','#2d5a3d');}
+
+// TRANSCRIPTS
+function loadTranscripts(){try{savedTranscripts=JSON.parse(localStorage.getItem('clarity_transcripts')||'[]');}catch(e){savedTranscripts=[];}}
+function persistTranscripts(){try{localStorage.setItem('clarity_transcripts',JSON.stringify(savedTranscripts));}catch(e){}}
+function saveTranscript(){
+  if(!cH.length){alert('No conversation to save yet.');return;}
+  const now=new Date();
+  const label=now.toLocaleDateString('en-US',{month:'long',day:'numeric',year:'numeric'})+' at '+now.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+  const firstUser=cH.find(m=>m.role==='user'&&!m.content.startsWith('[DR. CLARITY'));
+  const preview=(firstUser?firstUser.content:sit||'Session').slice(0,65);
+  const t={id:Date.now(),date:label,dateRaw:now.toISOString(),preview:preview+(preview.length>=65?'...':''),situation:sit,messages:[...cH]};
+  loadTranscripts();savedTranscripts.unshift(t);persistTranscripts();updateTBadge();
+  const btn=document.getElementById('save-btn');
+  if(btn){const orig=btn.innerHTML;btn.textContent='✓ Saved!';btn.style.background='#2d5a3d';btn.style.color='#fff';setTimeout(()=>{btn.innerHTML=orig;btn.style.background='';btn.style.color='';},2000);}
+}
+function renderTranscripts(){
+  loadTranscripts();
+  document.getElementById('tsub').textContent=savedTranscripts.length===0?'No saved sessions yet.':savedTranscripts.length+' saved session'+(savedTranscripts.length!==1?'s':'');
+  const list=document.getElementById('tlist');list.innerHTML='';
+  if(!savedTranscripts.length){list.innerHTML=`<div style="text-align:center;padding:3rem 1rem;color:#6b7f72;"><div style="font-size:48px;margin-bottom:1rem;opacity:0.25;">📄</div><p style="font-size:15px;margin-bottom:0.75rem;">No saved sessions yet.</p><p style="font-size:13px;line-height:1.6;">Chat with Dr. Clarity then tap <strong>Save</strong>.</p></div>`;return;}
+  savedTranscripts.forEach(t=>{
+    const item=document.createElement('div');item.className='transcript-item';
+    item.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;"><div style="flex:1;min-width:0;" onclick="viewTranscript(${t.id})"><div style="font-size:12px;color:#6b7f72;margin-bottom:4px;">${escHtml(t.date)}</div><div style="font-size:14px;font-weight:500;color:#1c2b20;line-height:1.5;margin-bottom:6px;">${escHtml(t.preview)}</div><div style="font-size:12px;color:#9aada2;">${t.messages.length} messages</div></div><div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;"><button onclick="viewTranscript(${t.id})" style="background:#e8f0ea;color:#2d5a3d;border:1px solid #a8d8b0;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;min-height:40px;">View</button><button onclick="confirmDelete(${t.id})" style="background:none;color:#c0392b;border:1px solid #f09595;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;min-height:40px;">Delete</button></div></div>`;
+    list.appendChild(item);
+  });
+}
+function confirmDelete(id){showModal('Delete this transcript? This cannot be undone.',()=>deleteTranscript(id));}
+function deleteTranscript(id){loadTranscripts();savedTranscripts=savedTranscripts.filter(t=>t.id!==id);persistTranscripts();updateTBadge();renderTranscripts();}
+function viewTranscript(id){loadTranscripts();currentViewingTranscript=savedTranscripts.find(t=>t.id===id);if(!currentViewingTranscript)return;document.getElementById('tviewer-title').textContent=currentViewingTranscript.date;renderTranscriptViewer(currentViewingTranscript);G('tviewer');}
+function renderTranscriptViewer(t){
+  const el=document.getElementById('tviewer-content');let html='';
+  if(t.situation)html+=`<div style="background:#fdf6ee;border:1px solid #e8c99a;border-radius:12px;padding:1rem;margin-bottom:1rem;"><div style="font-size:11px;font-weight:500;color:#7a4a1a;letter-spacing:1px;margin-bottom:6px;">SITUATION DESCRIBED</div><div style="font-size:14px;color:#2c1f0e;line-height:1.7;">${escHtml(t.situation)}</div></div>`;
+  t.messages.forEach(m=>{
+    if(m.role==='user'){const d=m.content.startsWith('[DR. CLARITY SESSION]')?'📋 Situation submitted for full analysis':m.content;html+=`<div style="display:flex;justify-content:flex-end;margin-bottom:12px;"><div style="max-width:85%;background:#2d5a3d;color:#fff;border-radius:16px 16px 4px 16px;padding:12px 16px;font-size:15px;line-height:1.7;white-space:pre-wrap;word-break:break-word;">${escHtml(d)}</div></div>`;}
+    else{const fmt=escHtml(m.content).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');html+=`<div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:12px;"><div style="width:30px;height:30px;border-radius:50%;background:#2d5a3d;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="13" height="13" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="5" fill="white"/><circle cx="14" cy="14" r="10" stroke="white" stroke-width="1.5" stroke-dasharray="3 2"/></svg></div><div style="max-width:85%;background:#e8f0ea;border-radius:16px 16px 16px 4px;padding:12px 16px;font-size:15px;line-height:1.7;word-break:break-word;">${fmt}</div></div>`;}
+  });
+  el.innerHTML=html||'<p style="color:#6b7f72;font-size:14px;padding:1rem;">No messages.</p>';
+}
+function updateTBadge(){loadTranscripts();const n=savedTranscripts.length;const b=document.getElementById('tbadge');if(b){if(n>0){b.textContent=n;b.style.display='inline-flex';}else b.style.display='none';}}
+
+function downloadTranscript(){
+  if(!currentViewingTranscript)return;
+  const t=currentViewingTranscript;
+  let txt='CLARITY — SESSION TRANSCRIPT\nDr. Clarity | AI Counseling Assistant\nFrameworks: Gottman, EFT, Attachment Theory, CBT, NVC, DBT\nNOTE: AI tool. Not a substitute for licensed therapy.\n'+'─'.repeat(50)+'\nDate: '+t.date+'\n';
+  if(t.situation)txt+='\nSITUATION:\n'+t.situation+'\n';
+  txt+='\n'+'─'.repeat(50)+'\n\n';
+  t.messages.forEach(m=>{if(m.role==='user'){const d=m.content.startsWith('[DR. CLARITY SESSION]')?'[Situation submitted]':m.content;txt+='KEITH:\n'+d+'\n\n';}else txt+='DR. CLARITY:\n'+m.content.replace(/\*\*/g,'')+'\n\n';});
+  txt+='─'.repeat(50)+'\nPrivate & Confidential\n';
+  const blob=new Blob([txt],{type:'text/plain;charset=utf-8'});
+  const url=URL.createObjectURL(blob);const a=document.createElement('a');
+  a.href=url;a.download='clarity-session-'+new Date(t.dateRaw).toISOString().slice(0,10)+'.txt';
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},100);
+}
+
+function printTranscript(){
+  if(!currentViewingTranscript)return;
+  const t=currentViewingTranscript;
+  let html=`<style>*{box-sizing:border-box;}body{font-family:Georgia,serif;color:#1c2b20;max-width:680px;margin:40px auto;padding:0 24px;line-height:1.7;font-size:14px;}h1{font-size:20px;color:#2d5a3d;margin-bottom:3px;}.meta{font-size:12px;color:#6b7f72;margin-bottom:3px;}.disc{font-size:11px;color:#9aada2;margin-bottom:20px;font-style:italic;}hr{border:none;border-top:1px solid #d0ddd3;margin:18px 0;}.sit{background:#fdf6ee;border-left:4px solid #e8c99a;padding:10px 14px;margin-bottom:20px;}.msg{margin-bottom:16px;page-break-inside:avoid;}.lbl{font-size:10px;font-weight:bold;letter-spacing:1.5px;margin-bottom:3px;}.k{color:#2d5a3d;}.c{color:#5a3d7a;}.txt{font-size:13px;line-height:1.75;white-space:pre-wrap;}.footer{font-size:11px;color:#9aada2;text-align:center;margin-top:36px;padding-top:14px;border-top:1px solid #e8e0d8;}</style>`;
+  html+=`<h1>Clarity — Session Transcript</h1><div class="meta">Dr. Clarity · ${escHtml(t.date)}</div><div class="disc">AI tool — not a substitute for licensed therapy.</div><hr>`;
+  if(t.situation)html+=`<div class="sit"><div style="font-size:11px;font-weight:bold;color:#7a4a1a;letter-spacing:1px;margin-bottom:5px;">SITUATION</div><div style="font-size:13px;color:#2c1f0e;">${escHtml(t.situation)}</div></div>`;
+  t.messages.forEach(m=>{if(m.role==='user'){const d=m.content.startsWith('[DR. CLARITY SESSION]')?'[Situation submitted]':m.content;html+=`<div class="msg"><div class="lbl k">KEITH</div><div class="txt">${escHtml(d)}</div></div>`;}else{html+=`<div class="msg"><div class="lbl c">DR. CLARITY</div><div class="txt">${escHtml(m.content.replace(/\*\*(.+?)\*\*/g,'$1'))}</div></div>`;}});
+  html+=`<div class="footer">Private &amp; Confidential · Clarity App</div>`;
+  let win=null;try{win=window.open('','_blank','width=780,height=900');}catch(e){}
+  if(win&&!win.closed){win.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Clarity Session</title></head><body>'+html+'</body></html>');win.document.close();win.focus();setTimeout(()=>{try{win.print();}catch(e){}},600);}
+  else{const blob=new Blob(['<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body>'+html+'</body></html>'],{type:'text/html'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='clarity-session-'+new Date(t.dateRaw).toISOString().slice(0,10)+'.html';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(url);document.body.removeChild(a);},100);}
+}
+
+// TTS MODE
+function setTTSMode(mode){ttsMode=mode;localStorage.setItem('clarity_tts_mode',mode);document.getElementById('btn-eleven').classList.toggle('selected',mode==='elevenlabs');document.getElementById('btn-browser').classList.toggle('selected',mode==='browser');document.getElementById('eleven-options').style.display=mode==='elevenlabs'?'block':'none';document.getElementById('browser-options').style.display=mode==='browser'?'block':'none';}
+
+// ELEVENLABS
+async function speakElevenLabs(text){
+  const key=getElevenKey();if(!key)return;
+  const voiceId=document.getElementById('eleven-voice-select')?.value||'21m00Tcm4TlvDq8ikWAM';
+  const clean=text.replace(/\*\*/g,'').replace(/\*/g,'').replace(/#{1,3}\s/g,'').replace(/\n+/g,' ').trim();
+  const chunks=splitIntoChunks(clean,800);
+  document.getElementById('stop-btn').style.display='block';
+  for(const chunk of chunks){if(!speakOn)break;await playElevenChunk(key,voiceId,chunk);}
+  document.getElementById('stop-btn').style.display='none';
+}
+function splitIntoChunks(text,maxLen){if(text.length<=maxLen)return[text];const chunks=[];let rem=text;while(rem.length>maxLen){let cut=rem.lastIndexOf('. ',maxLen);if(cut<200)cut=rem.lastIndexOf(', ',maxLen);if(cut<200)cut=maxLen;else cut+=2;chunks.push(rem.slice(0,cut).trim());rem=rem.slice(cut).trim();}if(rem)chunks.push(rem);return chunks;}
+function playElevenChunk(key,voiceId,text){return new Promise(async(resolve)=>{try{const r=await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,{method:'POST',headers:{'xi-api-key':key,'Content-Type':'application/json','Accept':'audio/mpeg'},body:JSON.stringify({text,model_id:'eleven_turbo_v2_5',voice_settings:{stability:0.45,similarity_boost:0.80,style:0.25,use_speaker_boost:true}})});if(!r.ok){resolve();return;}const blob=await r.blob();const url=URL.createObjectURL(blob);currentAudio=new Audio(url);currentAudio.onended=()=>{URL.revokeObjectURL(url);resolve();};currentAudio.onerror=()=>resolve();await currentAudio.play();}catch(e){resolve();}});}
+function showElevenMsg(text,bg,color){const m=document.getElementById('eleven-msg');if(!m)return;m.style.display='block';m.style.background=bg;m.style.color=color;m.textContent=text;setTimeout(()=>m.style.display='none',3000);}
+async function testElevenVoice(){const key=document.getElementById('eleven-key-input').value.trim()||getElevenKey();if(!key){showElevenMsg('Enter your ElevenLabs key first.','#fcebeb','#501313');return;}localStorage.setItem('clarity_eleven_key',key);showElevenMsg('Testing...','#f5f0e8','#6b7f72');try{await playElevenChunk(key,document.getElementById('eleven-voice-select').value,"Hello Keith. I'm Dr. Clarity.");showElevenMsg('✓ Voice working!','#e8f0ea','#2d5a3d');}catch(e){showElevenMsg('Error: '+e.message,'#fcebeb','#501313');}}
+
+// BROWSER TTS
+function initVoices(){voices=window.speechSynthesis.getVoices();if(!voices.length)window.speechSynthesis.onvoiceschanged=()=>{voices=window.speechSynthesis.getVoices();populateBrowserVoices();};else populateBrowserVoices();}
+function populateBrowserVoices(){voices=window.speechSynthesis.getVoices();const sel=document.getElementById('voice-select');if(!sel||!voices.length)return;const eng=voices.filter(v=>v.lang.startsWith('en'));const pool=eng.length?eng:voices;sel.innerHTML='';pool.forEach((v,i)=>{const o=document.createElement('option');o.value=i;o.textContent=v.name+' ('+v.lang+')';sel.appendChild(o);});const pref=['Samantha','Google US English','Microsoft Aria','Microsoft Zira','Karen'];for(const p of pref){const i=pool.findIndex(v=>v.name.includes(p));if(i>=0){sel.value=i;break;}}}
+function speakBrowser(text){if(!window.speechSynthesis)return;stopBrowserSpeech();const clean=text.replace(/\*\*/g,'').replace(/\*/g,'').replace(/#{1,3}\s/g,'').trim();const sentences=clean.match(/[^.!?]+[.!?]+/g)||[clean];let idx=0;document.getElementById('stop-btn').style.display='block';function next(){if(idx>=sentences.length||!speakOn){document.getElementById('stop-btn').style.display='none';return;}const u=new SpeechSynthesisUtterance(sentences[idx++].trim());const eng=voices.filter(v=>v.lang.startsWith('en'));const pool=eng.length?eng:voices;const sel=document.getElementById('voice-select');const v=pool[parseInt(sel?.value)||0]||pool[0];if(v)u.voice=v;u.rate=parseFloat(document.getElementById('rate-slider')?.value||0.9);u.pitch=1.0;u.onend=next;u.onerror=next;window.speechSynthesis.speak(u);}next();}
+function stopBrowserSpeech(){window.speechSynthesis?.cancel();}
+function testBrowserVoice(){const p=speakOn;speakOn=true;speakBrowser("Hello Keith. I'm Dr. Clarity.");speakOn=p;}
+function speak(text){if(!speakOn)return;stopSpeaking();if(ttsMode==='elevenlabs')speakElevenLabs(text);else speakBrowser(text);}
+function stopSpeaking(){stopBrowserSpeech();if(currentAudio){currentAudio.pause();currentAudio.src='';currentAudio=null;}document.getElementById('stop-btn').style.display='none';}
+function toggleSpeak(){speakOn=!speakOn;updateSpeakUI();if(!speakOn)stopSpeaking();}
+function updateSpeakUI(){document.getElementById('home-speak-toggle')?.classList.toggle('on',speakOn);const sl=document.getElementById('speak-label');if(sl)sl.textContent=speakOn?'Voice on':'Voice off';document.getElementById('chat-speak-toggle')?.classList.toggle('on',speakOn);const cl=document.getElementById('chat-speak-label');if(cl)cl.textContent=speakOn?'On':'Off';const st=document.getElementById('settings-speak-toggle');if(st)st.style.background=speakOn?'#2d5a3d':'#aaa';const kn=document.getElementById('toggle-knob');if(kn)kn.style.left=speakOn?'25px':'3px';}
+
+// STT
+function initRecognition(){const SR=window.SpeechRecognition||window.webkitSpeechRecognition;if(!SR)return;recognition=new SR();recognition.continuous=false;recognition.interimResults=true;recognition.lang='en-US';recognition.onresult=(e)=>{let final='';for(let i=e.resultIndex;i<e.results.length;i++){if(e.results[i].isFinal)final+=e.results[i][0].transcript;}if(final){const id=recogTarget==='sess'?'sit':'cinput';const el=document.getElementById(id);el.value=(el.value?el.value+' ':'')+final.trim();if(id==='sit')onType();}};recognition.onend=()=>{recogActive=false;updateMicUI();document.getElementById('chat-mic-status').classList.remove('active');document.getElementById('sess-mic-status').classList.remove('active');if(recogTarget==='chat'){const v=document.getElementById('cinput').value.trim();if(v)doChat();}};recognition.onerror=(e)=>{recogActive=false;updateMicUI();document.getElementById('chat-mic-status').classList.remove('active');document.getElementById('sess-mic-status').classList.remove('active');if(e.error==='not-allowed')alert('Microphone access denied. Please allow microphone access in your browser settings.');};}
+const MIC_SVG='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>';
+const STOP_SVG='<svg width="18" height="18" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>';
+function toggleChatMic(){if(!recognition){alert('Speech recognition not supported. Use Chrome for best results.');return;}if(recogActive&&recogTarget==='chat'){recognition.stop();return;}if(recogActive)recognition.stop();stopSpeaking();recogTarget='chat';recogActive=true;document.getElementById('cinput').value='';document.getElementById('chat-mic-status').classList.add('active');updateMicUI();recognition.start();}
+function toggleSessMic(){if(!recognition){alert('Speech recognition not supported. Use Chrome.');return;}if(recogActive&&recogTarget==='sess'){recognition.stop();return;}if(recogActive)recognition.stop();recogTarget='sess';recogActive=true;document.getElementById('sess-mic-status').classList.add('active');updateMicUI();recognition.start();}
+function updateMicUI(){const cm=document.getElementById('chat-mic'),sm=document.getElementById('sess-mic');if(cm){cm.innerHTML=recogActive&&recogTarget==='chat'?STOP_SVG:MIC_SVG;cm.classList.toggle('listening',recogActive&&recogTarget==='chat');}if(sm){sm.innerHTML=recogActive&&recogTarget==='sess'?STOP_SVG:MIC_SVG;sm.classList.toggle('listening',recogActive&&recogTarget==='sess');}}
+
+// NAVIGATION
+function G(s){document.querySelectorAll('.screen').forEach(x=>x.classList.remove('active'));document.getElementById(s).classList.add('active');document.querySelectorAll('.bnav-btn').forEach(b=>b.classList.remove('active'));const idx={home:0,session:1,chat:2,homework:3,transcripts:4};if(idx[s]!==undefined)document.querySelectorAll('.bnav-btn')[idx[s]]?.classList.add('active');if(s==='homework')rHW();if(s==='transcripts')renderTranscripts();if(s==='settings'){populateBrowserVoices();const k=getKey();if(k)document.getElementById('settings-key-input').value=k;const ek=getElevenKey();if(ek)document.getElementById('eleven-key-input').value=ek;setTTSMode(ttsMode);}
+// ANDROID FIX: scroll chat to bottom when switching to chat
+if(s==='chat'){setTimeout(()=>{const msgs=document.getElementById('chatmsgs');if(msgs)msgs.scrollTop=msgs.scrollHeight;},100);}}
+
+// API
+async function callAPI(messages,system){const key=getKey();if(!key)throw new Error('No API key. Go to Settings → Anthropic API Key.');const r=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json','anthropic-dangerous-direct-browser-access':'true','anthropic-version':'2023-06-01','x-api-key':key},body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:1024,system:system||SYS,messages})});if(!r.ok){let e='';try{const j=await r.json();e=j.error?.message||JSON.stringify(j);}catch(x){e=await r.text();}if(r.status===401)throw new Error('Invalid API key. Please update in Settings.');if(r.status===402||r.status===429)throw new Error('Billing issue. Check console.anthropic.com/billing');throw new Error('API error ('+r.status+'): '+e);}const d=await r.json();if(d.error)throw new Error(d.error.message);return d;}
+async function testConnection(){const res=document.getElementById('conn-result');res.style.display='block';res.style.background='#f5f0e8';res.style.color='#6b7f72';res.textContent='Testing...';try{await callAPI([{role:'user',content:'Reply: Connected'}]);res.textContent='✓ Connected! Dr. Clarity is ready.';res.style.background='#e8f0ea';res.style.color='#2d5a3d';}catch(e){res.textContent='✗ '+e.message;res.style.background='#fcebeb';res.style.color='#501313';}}
+
+// SESSION
+function onType(){const v=document.getElementById('sit').value;sit=v;document.getElementById('ccount').textContent=v.length+' characters';const btn=document.getElementById('abtn'),hint=document.getElementById('chint');if(v.trim().length<30){btn.classList.add('off');btn.style.cursor='not-allowed';hint.textContent='Keep typing...';}else{btn.classList.remove('off');btn.style.cursor='pointer';hint.textContent='Ready!';hint.style.color='#4a7c59';}}
+function doAnalyze(){const v=document.getElementById('sit').value.trim();if(v.length<30||analyzing)return;analyzing=true;sit=v;document.getElementById('abtn').style.display='none';document.getElementById('amsg').style.display='block';const p=`[DR. CLARITY SESSION]\n\nKeith has described this situation:\n\n"${v}"\n\nRespond AS DR. CLARITY with full structured analysis using bold labeled sections:\n\n**KEY INSIGHT** — Most important takeaway, grounded in a named framework.\n\n**YOUR PERSPECTIVE (Keith)** — Validate what Keith feels without excusing harmful behavior.\n\n**MAURA'S PERSPECTIVE** — What Maura may be feeling or needing. Frame as informed inference using EFT or attachment language. Make clear this is inference.\n\n**HONEST FEEDBACK** — Direct honest assessment. Name Gottman's Four Horsemen if present.\n\n**BACKGROUND & PATTERNS** — How childhood experiences and attachment styles may be shaping this pattern.\n\n**WHAT TO SAY TO MAURA** — Specific apology using NVC: acknowledge impact, name her unmet need, make a concrete request. Give actual words.\n\n**HOMEWORK** — 2 specific behavioral assignments for this week. Reference the therapeutic technique behind each.\n\nRemind Keith that Dr. Clarity is an AI tool and cannot replace a licensed couples therapist.`;sendAI(p,true);setTimeout(()=>{document.getElementById('abtn').style.display='block';document.getElementById('amsg').style.display='none';analyzing=false;G('chat');},700);}
+
+// CHAT
+async function sendAI(text,fromSession){if(busy&&!fromSession)return;busy=true;const sendBtn=document.getElementById('send-btn');if(sendBtn){sendBtn.style.opacity='0.4';sendBtn.style.pointerEvents='none';}addBubble('user',fromSession?'📋 Situation submitted for full analysis...':text);cH.push({role:'user',content:text});const tid=addThink();const sys=sit?SYS+`\n\nContext — Keith's situation: "${sit.slice(0,500)}"`:SYS;try{const data=await callAPI(cH,sys);rmThink(tid);const reply=data.content[0].text;cH.push({role:'assistant',content:reply});addBubble('assistant',reply);xHW(reply);if(speakOn)speak(reply);}catch(e){rmThink(tid);addBubble('assistant','⚠️ '+e.message);}busy=false;if(sendBtn){sendBtn.style.opacity='';sendBtn.style.pointerEvents='';}}
+function doChat(){const inp=document.getElementById('cinput'),t=inp.value.trim();if(!t||busy)return;inp.value='';inp.style.height='auto';sendAI(t,false);}
+function ck(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();doChat();}}
+function aR(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+function addBubble(role,text){const msgs=document.getElementById('chatmsgs'),row=document.createElement('div');row.style.cssText='display:flex;align-items:flex-start;gap:8px;'+(role==='user'?'flex-direction:row-reverse;':'');const av=role==='assistant'?`<div style="width:32px;height:32px;border-radius:50%;background:#2d5a3d;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="5" fill="white"/><circle cx="14" cy="14" r="10" stroke="white" stroke-width="1.5" stroke-dasharray="3 2"/></svg></div>`:'';const fmt=escHtml(text).replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/\n/g,'<br>');row.innerHTML=av+`<div class="bubble ${role==='user'?'bubble-user':'bubble-ai'}">${fmt}</div>`;msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;}
+function addThink(){const id='t'+(++tc),msgs=document.getElementById('chatmsgs'),row=document.createElement('div');row.id=id;row.style.cssText='display:flex;align-items:flex-start;gap:8px;';row.innerHTML=`<div style="width:32px;height:32px;border-radius:50%;background:#2d5a3d;display:flex;align-items:center;justify-content:center;flex-shrink:0;"><svg width="15" height="15" viewBox="0 0 28 28" fill="none"><circle cx="14" cy="14" r="5" fill="white"/><circle cx="14" cy="14" r="10" stroke="white" stroke-width="1.5" stroke-dasharray="3 2"/></svg></div><div class="bubble bubble-ai"><div class="dot-pulse"><span></span><span></span><span></span></div></div>`;msgs.appendChild(row);msgs.scrollTop=msgs.scrollHeight;return id;}
+function rmThink(id){document.getElementById(id)?.remove();}
+
+// HOMEWORK
+function xHW(text){const m=text.match(/\*\*HOMEWORK\*\*([\s\S]*?)(?=\n\*\*[A-Z]|\n---|$)/i);if(!m)return;const lines=m[1].split('\n').filter(l=>/^\s*(\d+[.)]\s|\*\s|-\s)/i.test(l));const ts=Date.now();lines.forEach((l,i)=>{const clean=l.replace(/^\s*(\d+[.)]\s+|\*\s+|-\s+)/,'').replace(/\*\*/g,'').trim();if(clean.length>10)hw.push({id:ts+'-'+i,text:clean,date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'})});});uBadge();}
+function addM(){const inp=document.getElementById('hwinput'),t=inp.value.trim();if(!t)return;hw.push({id:Date.now()+'-m',text:t,date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric'})});inp.value='';rHW();uBadge();}
+function rHW(){const p=hw.filter(h=>!dHW.has(h.id)).length;document.getElementById('hwsub').textContent=hw.length===0?'No assignments yet — start a session to receive homework.':p+' remaining · '+dHW.size+' completed';const list=document.getElementById('hwlist');list.innerHTML='';if(!hw.length){list.innerHTML=`<div style="text-align:center;padding:3rem 1rem;color:#6b7f72;"><div style="font-size:48px;margin-bottom:1rem;opacity:0.25;">◻</div><p style="font-size:15px;margin-bottom:1.5rem;">No assignments yet.</p><button onclick="G('session')" style="background:#2d5a3d;color:#fff;border:none;border-radius:12px;padding:14px 24px;cursor:pointer;font-size:15px;font-family:'DM Sans',sans-serif;">Start a session →</button></div>`;return;}hw.forEach(h=>{const done=dHW.has(h.id),item=document.createElement('div');item.className='hw-item';item.style.background=done?'#f0f7f2':'#fff';item.style.borderColor=done?'#a8d8b0':'#d0ddd3';item.innerHTML=`<button onclick="tHW('${h.id}')" style="width:28px;height:28px;border-radius:8px;border:2px solid ${done?'#2d7a4a':'#d0ddd3'};background:${done?'#2d7a4a':'transparent'};cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;">${done?'<svg width="14" height="14" viewBox="0 0 12 12" fill="none"><path d="M2 6L5 9L10 3" stroke="white" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>':''}</button><div style="flex:1;"><p style="font-size:15px;line-height:1.65;margin-bottom:3px;color:${done?'#6b7f72':'#1c2b20'};text-decoration:${done?'line-through':'none'};">${escHtml(h.text)}</p><span style="font-size:12px;color:#9aada2;">Assigned ${h.date}</span></div><button onclick="removeHWConfirm('${h.id}')" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:22px;padding:0 4px;flex-shrink:0;min-width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;">×</button>`;list.appendChild(item);});}
+function removeHWConfirm(id){showModal('Remove this homework item?',()=>rHWi(id));}
+function tHW(id){const n=new Set(dHW);n.has(id)?n.delete(id):n.add(id);dHW=n;rHW();uBadge();}
+function rHWi(id){hw=hw.filter(h=>h.id!==id);dHW.delete(id);rHW();uBadge();}
+function uBadge(){const p=hw.filter(h=>!dHW.has(h.id)).length;['hbadge','nbadge'].forEach(id=>{const b=document.getElementById(id);if(b){if(p>0){b.textContent=p;b.style.display='inline-flex';}else b.style.display='none';}});}
+
+// ANDROID FIX: handle keyboard showing/hiding on Android
+// When keyboard opens, it resizes viewport — we scroll chat to bottom
+window.addEventListener('resize',()=>{
+  const msgs=document.getElementById('chatmsgs');
+  if(msgs&&document.getElementById('chat').classList.contains('active')){
+    setTimeout(()=>msgs.scrollTop=msgs.scrollHeight,100);
+  }
+});
+
+// INIT
+initVoices();
+initRecognition();
+loadTranscripts();
+updateTBadge();
+rHW();
+ttsMode=localStorage.getItem('clarity_tts_mode')||'browser';
+updateSpeakUI();
+if(getKey())G('home');else G('setup');
+</script>
+</body>
+</html>
